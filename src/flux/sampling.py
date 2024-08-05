@@ -1,13 +1,16 @@
 import math
 from typing import Callable
-
 import torch
 from einops import rearrange, repeat
 from torch import Tensor
-
 from .model import Flux
 from .modules.conditioner import HFEmbedder
-
+## T5 neuron推理
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+num_beams = 1
+num_return_sequences = 1
+max_length = 128
+tokenizer = T5Tokenizer.from_pretrained(model_name, model_max_length=max_length)
 
 def get_noise(
     num_samples: int,
@@ -27,6 +30,48 @@ def get_noise(
         dtype=dtype,
         generator=torch.Generator(device=device).manual_seed(seed),
     )
+
+def prepare_by_neuron(t5: T5Wrapper, clip: HFEmbedder, img: Tensor, prompt: str | list[str]) -> dict[str, Tensor]:
+    bs, c, h, w = img.shape
+    if bs == 1 and not isinstance(prompt, str):
+        bs = len(prompt)
+
+    img = rearrange(img, "b c (h ph) (w pw) -> b (h w) (c ph pw)", ph=2, pw=2)
+    if img.shape[0] == 1 and bs > 1:
+        img = repeat(img, "1 ... -> bs ...", bs=bs)
+
+    img_ids = torch.zeros(h // 2, w // 2, 3)
+    img_ids[..., 1] = img_ids[..., 1] + torch.arange(h // 2)[:, None]
+    img_ids[..., 2] = img_ids[..., 2] + torch.arange(w // 2)[None, :]
+    img_ids = repeat(img_ids, "h w c -> b (h w) c", b=bs)
+
+    if isinstance(prompt, str):
+        prompt = [prompt]
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    txt = t5.generate(tokenizer=tokenizer,
+                            prompt,
+                            max_length=max_length,
+                            num_beams=num_beams,
+                            num_return_sequences=num_return_sequences,
+                            device="xla")
+
+
+    #txt = t5(prompt)
+    if txt.shape[0] == 1 and bs > 1:
+        txt = repeat(txt, "1 ... -> bs ...", bs=bs)
+    txt_ids = torch.zeros(bs, txt.shape[1], 3)
+
+    vec = clip(prompt)
+    if vec.shape[0] == 1 and bs > 1:
+        vec = repeat(vec, "1 ... -> bs ...", bs=bs)
+
+    return {
+        "img": img,
+        "img_ids": img_ids.to(img.device),
+        "txt": txt.to(img.device),
+        "txt_ids": txt_ids.to(img.device),
+        "vec": vec.to(img.device),
+    }
 
 
 def prepare(t5: HFEmbedder, clip: HFEmbedder, img: Tensor, prompt: str | list[str]) -> dict[str, Tensor]:
