@@ -821,15 +821,15 @@ torch_neuronx.move_trace_to_device(model.decoder, 0)
 
 ### inference
 
-output = model.generate(tokenizer=tokenizer,
-                        prompt="translate English to German: Lets eat good food.",
-                        max_length=max_length,
-                        num_beams=num_beams,
-                        num_return_sequences=num_return_sequences,
-                        device="xla")
-
-results = [tokenizer.decode(t, skip_special_tokens=True) for t in output]
-
-print('Results:')
-for i, summary in enumerate(results):
-    print(i + 1, summary)
+#output = model.generate(tokenizer=tokenizer,
+#                        prompt="translate English to German: Lets eat good food.",
+#                        max_length=max_length,
+#                        num_beams=num_beams,
+#                        num_return_sequences=num_return_sequences,
+#                        device="xla")
+#
+#results = [tokenizer.decode(t, skip_special_tokens=True) for t in output]
+#
+#print('Results:')
+#for i, summary in enumerate(results):
+#    print(i + 1, summary)

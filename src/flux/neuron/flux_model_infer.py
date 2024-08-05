@@ -12,6 +12,11 @@ from flux.util import (configs, embed_watermark, load_ae, load_clip,load_flow_mo
 from t5_compile import *
 from transformers import pipeline
 
+##cli
+#
+# python -m flux --name 'flux-schnell'   --height 720 --width 640   --prompt "a photo of a forest with mist swirling around the tree trunks. The word "
+
+
 ###neuron relevant lib
 import copy
 import neuron.forward_decorator as fd
