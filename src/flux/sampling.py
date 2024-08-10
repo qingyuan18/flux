@@ -7,10 +7,14 @@ from .model import Flux
 from .modules.conditioner import HFEmbedder
 ## T5 neuron推理
 from transformers import T5Tokenizer, T5ForConditionalGeneration
+import sys
+sys.path.append("../neuron/")
+from flux.neuron.t5_compile import T5Wrapper
+
 num_beams = 1
 num_return_sequences = 1
 max_length = 128
-tokenizer = T5Tokenizer.from_pretrained(model_name, model_max_length=max_length)
+tokenizer = T5Tokenizer.from_pretrained("google/t5-v1_1-xxl", model_max_length=max_length)
 
 def get_noise(
     num_samples: int,
@@ -47,13 +51,8 @@ def prepare_by_neuron(t5: T5Wrapper, clip: HFEmbedder, img: Tensor, prompt: str 
 
     if isinstance(prompt, str):
         prompt = [prompt]
-    tokenizer = T5Tokenizer.from_pretrained(model_name)
-    txt = t5.generate(tokenizer=tokenizer,
-                            prompt,
-                            max_length=max_length,
-                            num_beams=num_beams,
-                            num_return_sequences=num_return_sequences,
-                            device="xla")
+    global tokenizer,max_length,num_beams,num_return_sequences
+    txt = t5.generate(tokenizer=tokenizer,prompt=prompt,max_length=max_length,num_beams=num_beams,num_return_sequences=num_return_sequences,device="xla")
 
 
     #txt = t5(prompt)

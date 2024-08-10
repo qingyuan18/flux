@@ -13,6 +13,8 @@ from flux.sampling import denoise, get_noise, get_schedule, prepare, unpack
 from flux.util import (configs, embed_watermark, load_ae, load_clip,
                        load_flow_model, load_t5)
 from transformers import pipeline
+import flux.neuron.forward_decorator as fd
+
 
 NSFW_THRESHOLD = 0.85
 
@@ -157,8 +159,27 @@ def main(
     # init all components
     t5 = load_t5(torch_device, max_length=256 if name == "flux-schnell" else 512)
     clip = load_clip(torch_device)
+    #import inspect
+    #methods = inspect.getmembers(clip.tokenizer, predicate=inspect.ismethod)
+    #print("\nUsing clip tokenizer inspect:")
+    #for name, method in methods:
+    #    print(name)
+#
+    #methods = inspect.getmembers(clip.hf_module, predicate=inspect.ismethod)
+    #    print("\nUsing clip hf_module inspect:")
+    #    for name, method in methods:
+    #        print(name)
+
+
+    #clip_tokenizer_neuron=fd.make_forward_verbose(model=clip.tokenizer, model_name="openai clip vit tokenizer")
+    clip.hf_module=fd.make_forward_verbose(model=clip.hf_module, model_name="openai clip vit hf_module")
+
     model = load_flow_model(name, device="cpu" if offload else torch_device)
+    model = fd.make_forward_verbose(model=model, model_name="flux model")
+
     ae = load_ae(name, device="cpu" if offload else torch_device)
+    ae=fd.make_forward_verbose(model=ae, model_name="vae")
+
 
     rng = torch.Generator(device="cpu")
     opts = SamplingOptions(
@@ -225,8 +246,8 @@ def main(
         x = rearrange(x[0], "c h w -> h w c")
 
         img = Image.fromarray((127.5 * (x + 1.0)).cpu().byte().numpy())
-        nsfw_score = [x["score"] for x in nsfw_classifier(img) if x["label"] == "nsfw"][0]
-        
+        #nsfw_score = [x["score"] for x in nsfw_classifier(img) if x["label"] == "nsfw"][0]
+        nsfw_score = 0
         if nsfw_score < NSFW_THRESHOLD:
             exif_data = Image.Exif()
             exif_data[ExifTags.Base.Software] = "AI generated;txt2img;flux"

@@ -1,7 +1,6 @@
 from typing import Any, Callable, Dict, Optional, Tuple
 import torch
 from transformers.modeling_outputs import BaseModelOutputWithPooling
-from diffusers.models.unet_2d_condition import UNet2DConditionModel, UNet2DConditionOutput
 
 
 def print_args(args: Tuple[Any]) -> None:

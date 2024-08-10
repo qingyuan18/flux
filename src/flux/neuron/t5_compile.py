@@ -2,13 +2,13 @@ import torch
 import torch_xla.core.xla_model as xm
 import torch
 import torch_neuronx
+from pathlib import Path
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 from transformers.modeling_outputs import BaseModelOutput, Seq2SeqLMOutput
 from transformers.models.t5.modeling_t5 import T5Stack, T5LayerCrossAttention
 from transformers.generation.utils import ModelOutput
 from typing import Any, Dict, List, Optional, Tuple, Union
 from transformers.generation.beam_search import BeamScorer, BeamSearchScorer
-
 from optimum.neuron.generation import NeuronGenerationMixin
 
 from transformers.generation.logits_process import (
@@ -700,6 +700,10 @@ class T5Wrapper(T5ForConditionalGeneration, NeuronGenerationMixin):
 
 
 # Let's set some run parameters
+NEURON_COMPILER_WORKDIR = Path("neuron_compiler_workdir")
+NEURON_COMPILER_WORKDIR.mkdir(exist_ok=True)
+NEURON_COMPILER_OUTPUT_DIR = Path("compiled_models")
+NEURON_COMPILER_OUTPUT_DIR.mkdir(exist_ok=True)
 
 model_name = "t5-large"
 num_beams = 1
@@ -800,8 +804,8 @@ model.config.use_cache = True
 traced_encoder = trace_encoder(model, tokenizer, max_length, num_beams)
 traced_decoder = trace_decoder(model, num_beams, max_length)
 
-torch.jit.save(traced_encoder, NEURON_COMPILER_OUTPUT_DIR+"/"+"TracedEncoder.pt")
-torch.jit.save(traced_decoder, NEURON_COMPILER_OUTPUT_DIR+"/"+"TracedDecoder.pt")
+torch.jit.save(traced_encoder, NEURON_COMPILER_OUTPUT_DIR / "TracedEncoder.pt")
+torch.jit.save(traced_decoder, NEURON_COMPILER_OUTPUT_DIR / "TracedDecoder.pt")
 
 
 runtime = torch.classes.neuron.Runtime()
@@ -811,11 +815,11 @@ runtime.set_default_neuron_cores(0, 1)
 tokenizer = T5Tokenizer.from_pretrained(model_name)
 model = T5Wrapper.from_pretrained(model_name)
 
-model.encoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR+"/"+"TracedEncoder.pt")
+model.encoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedEncoder.pt")
 # Attribute required by beam search
 setattr(model.encoder, 'main_input_name', 'input_ids')
 
-model.decoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR+"/"+"TracedDecoder.pt")
+model.decoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedDecoder.pt")
 torch_neuronx.move_trace_to_device(model.decoder, 0)
 
 
