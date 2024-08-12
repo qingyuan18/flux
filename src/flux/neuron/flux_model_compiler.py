@@ -132,9 +132,16 @@ if RUN_ON_NEURON:
     ## clip HF model
     VIT_CLIP_HF_COMPILATION_DIR = NEURON_COMPILER_WORKDIR / "CLIP_HF"
     VIT_CLIP_HF_COMPILATION_DIR.mkdir(exist_ok=True)
-    example_clip_model_input = torch.randn((BATCH_SIZE*NUM_IMAGES_PER_PROMPT, VAE_OUT_CHANNELS, HEIGHT, WIDTH), dtype=DTYPE)
-        with torch.no_grad():
-           clip_model_neuron = torch_neuronx.trace(
+    # 构建与 kwargs 格式一致的 example input
+    example_input_ids = torch.randint(0, 50000, (1, 77), dtype=torch.long)  # 与 kwarg0 格式一致
+    example_attention_mask = None  # 与原始 kwarg1 保持一致，使用 None
+    example_output_hidden_states = torch.tensor([False], dtype=torch.bool)
+
+    # 将这些组合成一个元组作为 example input
+    example_inputs = (example_input_ids, example_attention_mask, example_output_hidden_states)
+
+    with torch.no_grad():
+        clip_model_neuron = torch_neuronx.trace(
                clip_neuron,
                example_clip_model_input,
                    compiler_workdir=VIT_CLIP_HF_COMPILATION_DIR,
@@ -142,10 +149,10 @@ if RUN_ON_NEURON:
                    )
 
         neuron_model=clip_model_neuron
-        file_name ="clip_neuron_hf_model.pt":
-            torch_neuronx.async_load(neuron_model)
-            torch_neuronx.lazy_load(neuron_model)
-            torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
+        file_name ="clip_neuron_hf_model.pt"
+        torch_neuronx.async_load(neuron_model)
+        torch_neuronx.lazy_load(neuron_model)
+        torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
 
     # Free up memory
     print(neuron_model.code)
@@ -155,19 +162,17 @@ if RUN_ON_NEURON:
     FLUX_COMPILATION_DIR = NEURON_COMPILER_WORKDIR / "FLUX"
     FLUX_COMPILATION_DIR.mkdir(exist_ok=True)
 
-    # temp for debug
-    VISION_MODEL_HIDDEN_DIM = 1280
-    VAE_OUT_CHANNELS = 3
-    HEIGHT = 224
-    WIDTH = 224
 
-    example_flux_model_input = (img: Tensor,
-                                       img_ids: Tensor,
-                                       txt: Tensor,
-                                       txt_ids: Tensor,
-                                       timesteps: Tensor,
-                                       y: Tensor,
-                                       guidance: Tensor )
+    example_flux_model_input = (
+        torch.randn(1, 1800, 64),  # img: Tensor(1, 1800, 64)
+        torch.randint(0, 1000, (1, 1800, 3), dtype=torch.long),  # img_ids: Tensor(1, 1800, 3)
+        torch.randn(1, 256, 4096),  # txt: Tensor(1, 256, 4096)
+        torch.randint(0, 1000, (1, 256, 3), dtype=torch.long),  # txt_ids: Tensor(1, 256, 3)
+        torch.randn(1, 768),  # y: Tensor(1, 768)
+        torch.randint(0, 1000, (1,), dtype=torch.long),  # timesteps: Tensor(1,)
+        torch.randn(1)  # guidance: Tensor(1,)
+    )
+
     with torch.no_grad():
        flux_model_neuron = torch_neuronx.trace(
             model_neuron,
@@ -177,10 +182,10 @@ if RUN_ON_NEURON:
             )
 
       neuron_model=flux_model_neuron
-      file_name ="flux_neuron_model.pt":
-          torch_neuronx.async_load(neuron_model)
-          torch_neuronx.lazy_load(neuron_model)
-          torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
+      file_name ="flux_neuron_model.pt"
+      torch_neuronx.async_load(neuron_model)
+      torch_neuronx.lazy_load(neuron_model)
+      torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
         # Free up memory
       print(neuron_model.code)
       del neuron_model, example_flux_model_input
@@ -205,10 +210,10 @@ if RUN_ON_NEURON:
             )
 
           neuron_model=ae_model_neuron
-          file_name ="ae_neuron_model.pt":
-            torch_neuronx.async_load(neuron_model)
-            torch_neuronx.lazy_load(neuron_model)
-            torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
+          file_name ="ae_neuron_model.pt"
+          torch_neuronx.async_load(neuron_model)
+          torch_neuronx.lazy_load(neuron_model)
+          torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
           # Free up memory
           print(neuron_model.code)
           del neuron_model, example_flux_model_input
