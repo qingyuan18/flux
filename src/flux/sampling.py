@@ -8,7 +8,6 @@ from .modules.conditioner import HFEmbedder
 ## T5 neuron推理
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 import sys
-sys.path.append("../neuron/")
 from flux.neuron.t5_compile import T5Wrapper
 
 num_beams = 1
