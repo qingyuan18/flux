@@ -795,45 +795,48 @@ def trace_decoder(model: T5ForConditionalGeneration,
 
     return traced_decoder
 
+def main():
+    tokenizer = T5Tokenizer.from_pretrained(model_name, model_max_length=max_length)
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
 
-tokenizer = T5Tokenizer.from_pretrained(model_name, model_max_length=max_length)
-model = T5ForConditionalGeneration.from_pretrained(model_name)
+    # We enable this flag to ensure model uses attention key value caching
+    model.config.use_cache = True
+    traced_encoder = trace_encoder(model, tokenizer, max_length, num_beams)
+    traced_decoder = trace_decoder(model, num_beams, max_length)
 
-# We enable this flag to ensure model uses attention key value caching
-model.config.use_cache = True
-traced_encoder = trace_encoder(model, tokenizer, max_length, num_beams)
-traced_decoder = trace_decoder(model, num_beams, max_length)
-
-torch.jit.save(traced_encoder, NEURON_COMPILER_OUTPUT_DIR / "TracedEncoder.pt")
-torch.jit.save(traced_decoder, NEURON_COMPILER_OUTPUT_DIR / "TracedDecoder.pt")
-
-
-runtime = torch.classes.neuron.Runtime()
-runtime.initialize()
-runtime.set_default_neuron_cores(0, 1)
-
-tokenizer = T5Tokenizer.from_pretrained(model_name)
-model = T5Wrapper.from_pretrained(model_name)
-
-model.encoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedEncoder.pt")
-# Attribute required by beam search
-setattr(model.encoder, 'main_input_name', 'input_ids')
-
-model.decoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedDecoder.pt")
-torch_neuronx.move_trace_to_device(model.decoder, 0)
+    torch.jit.save(traced_encoder, NEURON_COMPILER_OUTPUT_DIR / "TracedEncoder.pt")
+    torch.jit.save(traced_decoder, NEURON_COMPILER_OUTPUT_DIR / "TracedDecoder.pt")
 
 
-### inference
+    runtime = torch.classes.neuron.Runtime()
+    runtime.initialize()
+    runtime.set_default_neuron_cores(0, 1)
 
-#output = model.generate(tokenizer=tokenizer,
-#                        prompt="translate English to German: Lets eat good food.",
-#                        max_length=max_length,
-#                        num_beams=num_beams,
-#                        num_return_sequences=num_return_sequences,
-#                        device="xla")
-#
-#results = [tokenizer.decode(t, skip_special_tokens=True) for t in output]
-#
-#print('Results:')
-#for i, summary in enumerate(results):
-#    print(i + 1, summary)
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = T5Wrapper.from_pretrained(model_name)
+
+    model.encoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedEncoder.pt")
+    # Attribute required by beam search
+    setattr(model.encoder, 'main_input_name', 'input_ids')
+
+    model.decoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedDecoder.pt")
+    torch_neuronx.move_trace_to_device(model.decoder, 0)
+
+
+    ### inference
+
+    #output = model.generate(tokenizer=tokenizer,
+    #                        prompt="translate English to German: Lets eat good food.",
+    #                        max_length=max_length,
+    #                        num_beams=num_beams,
+    #                        num_return_sequences=num_return_sequences,
+    #                        device="xla")
+    #
+    #results = [tokenizer.decode(t, skip_special_tokens=True) for t in output]
+    #
+    #print('Results:')
+    #for i, summary in enumerate(results):
+    #    print(i + 1, summary)
+
+if __name__ == "__main__":
+   main()

@@ -14,7 +14,7 @@ from transformers import pipeline
 
 ###neuron relevant lib
 import copy
-import neuron.forward_decorator as fd
+import forward_decorator as fd
 import torch_neuronx
 import torch_xla
 import torch_xla.core.xla_model as xm

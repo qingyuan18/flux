@@ -3,7 +3,7 @@ import re
 import time
 from dataclasses import dataclass
 from glob import iglob
-
+from datetime import datetime
 import torch
 from einops import rearrange
 from fire import Fire
@@ -157,6 +157,11 @@ def main(
             idx = 0
 
     # init all components
+
+
+    # 获取当前时间戳
+    now = datetime.now()
+    print("start initial model:"+now.strftime("%Y-%m-%d %H:%M:%S"))
     t5 = load_t5(torch_device, max_length=256 if name == "flux-schnell" else 512)
     clip = load_clip(torch_device)
     #import inspect
@@ -178,8 +183,9 @@ def main(
     model = fd.make_forward_verbose(model=model, model_name="flux model")
 
     ae = load_ae(name, device="cpu" if offload else torch_device)
-    ae=fd.make_forward_verbose(model=ae, model_name="vae")
-
+    ae.decoder=fd.make_forward_verbose(model=ae.decoder, model_name="vae")
+    now = datetime.now()
+    print("end initial model:"+now.strftime("%Y-%m-%d %H:%M:%S"))
 
     rng = torch.Generator(device="cpu")
     opts = SamplingOptions(
@@ -214,9 +220,13 @@ def main(
             ae = ae.cpu()
             torch.cuda.empty_cache()
             t5, clip = t5.to(torch_device), clip.to(torch_device)
+
+        now = datetime.now()
+        print("start prepare :"+now.strftime("%Y-%m-%d %H:%M:%S"))
         inp = prepare(t5, clip, x, prompt=opts.prompt)
         timesteps = get_schedule(opts.num_steps, inp["img"].shape[1], shift=(name != "flux-schnell"))
-
+        now = datetime.now()
+        print("end prepare :"+now.strftime("%Y-%m-%d %H:%M:%S"))
         # offload TEs to CPU, load model to gpu
         if offload:
             t5, clip = t5.cpu(), clip.cpu()
@@ -224,8 +234,11 @@ def main(
             model = model.to(torch_device)
 
         # denoise initial noise
+        now = datetime.now()
+        print("start initial noise:"+now.strftime("%Y-%m-%d %H:%M:%S"))
         x = denoise(model, **inp, timesteps=timesteps, guidance=opts.guidance)
-
+        now = datetime.now()
+        print("end initial noise:"+now.strftime("%Y-%m-%d %H:%M:%S"))
         # offload model, load autoencoder to gpu
         if offload:
             model.cpu()
