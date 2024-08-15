@@ -102,18 +102,18 @@ if RUN_ON_NEURON:
     ##加载neuron编译后的模型进行推理
       ### flux 相关模型
     model = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "flux_model_neuron.pt")
-    ae = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "ae_neuron.pt")
-    clip.tokenizer = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "clip_neuron_tokenizer_model.pt")
+    ae.decoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "ae_neuron.pt")
+    #clip.tokenizer = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "clip_neuron_tokenizer_model.pt")
     clip.hf_module = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "clip_neuron_hf_model.pt")
 
       ### T5 textencode模型
     tokenizer = T5Tokenizer.from_pretrained(model_name)
     t5 = T5Wrapper.from_pretrained(model_name)
-    t5.encoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR+"/"+"TracedEncoder.pt")
+    t5.encoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedEncoder.pt")
     # Attribute required by beam search
     setattr(t5.encoder, 'main_input_name', 'input_ids')
 
-    t5.decoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR+"/"+"TracedDecoder.pt")
+    t5.decoder = torch.jit.load(NEURON_COMPILER_OUTPUT_DIR / "TracedDecoder.pt")
 
 
     ###保持原有推理逻辑（nsfw pipeline）

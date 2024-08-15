@@ -699,46 +699,6 @@ class T5Wrapper(T5ForConditionalGeneration, NeuronGenerationMixin):
         return input_ids
 
 
-# Let's set some run parameters
-NEURON_COMPILER_WORKDIR = Path("neuron_compiler_workdir")
-NEURON_COMPILER_WORKDIR.mkdir(exist_ok=True)
-NEURON_COMPILER_OUTPUT_DIR = Path("compiled_models")
-NEURON_COMPILER_OUTPUT_DIR.mkdir(exist_ok=True)
-
-model_name = "t5-large"
-num_beams = 1
-num_return_sequences = 1
-max_length = 128
-prompt="translate English to German: Lets eat good food."
-
-tokenizer = T5Tokenizer.from_pretrained(model_name, model_max_length=max_length)
-model = T5Wrapper.from_pretrained(model_name)
-
-model.encoder = EncoderWrapper(model.encoder, model.decoder, model.config, num_beams, max_length, "cpu", num_beams)
-setattr(model.encoder, 'main_input_name', 'input_ids')  # Attribute required by beam search
-
-model.decoder = DecoderWrapper(decoder=model.decoder,
-                                lm_head=model.lm_head,
-                                model_config=model.config,
-                                num_beams=num_beams,
-                                max_length=max_length,
-                                device="cpu")
-
-output = model.generate(tokenizer=tokenizer,
-                        prompt=prompt,
-                        max_length=max_length,
-                        num_beams=num_beams,
-                        num_return_sequences=num_return_sequences,
-                        device="cpu")
-
-results = [tokenizer.decode(t, skip_special_tokens=True) for t in output]
-
-print('Results:')
-for i, summary in enumerate(results):
-    print(i + 1, summary)
-
-
-
 def trace_encoder(model: T5ForConditionalGeneration,
                   tokenizer: T5Tokenizer,
                   max_length: int,
@@ -796,6 +756,12 @@ def trace_decoder(model: T5ForConditionalGeneration,
     return traced_decoder
 
 def main():
+    # Let's set some run parameters
+    NEURON_COMPILER_WORKDIR = Path("neuron_compiler_workdir")
+    NEURON_COMPILER_WORKDIR.mkdir(exist_ok=True)
+    NEURON_COMPILER_OUTPUT_DIR = Path("compiled_models")
+    NEURON_COMPILER_OUTPUT_DIR.mkdir(exist_ok=True)
+
     tokenizer = T5Tokenizer.from_pretrained(model_name, model_max_length=max_length)
     model = T5ForConditionalGeneration.from_pretrained(model_name)
 

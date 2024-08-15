@@ -157,9 +157,6 @@ def main(
             idx = 0
 
     # init all components
-
-
-    # 获取当前时间戳
     now = datetime.now()
     print("start initial model:"+now.strftime("%Y-%m-%d %H:%M:%S"))
     t5 = load_t5(torch_device, max_length=256 if name == "flux-schnell" else 512)

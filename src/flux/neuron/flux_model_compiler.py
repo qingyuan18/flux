@@ -79,14 +79,14 @@ else:
 
 # init all components
 clip = load_clip(torch_device)
-clip_tokenizer_neuron=fd.make_forward_verbose(model=clip.tokenizer, model_name="openai clip vit tokenizer")
+#clip_tokenizer_neuron=fd.make_forward_verbose(model=clip.tokenizer, model_name="openai clip vit tokenizer")
 clip_hf_module_neuron=fd.make_forward_verbose(model=clip.hf_module, model_name="openai clip vit hf_module")
 
 model = load_flow_model(name, device="cpu" if offload else torch_device)
 model_neuron=fd.make_forward_verbose(model=model, model_name="flux model")
 
 ae = load_ae(name, device="cpu" if offload else torch_device)
-ae_neuron=fd.make_forward_verbose(model=ae, model_name="vae")
+ae_neuron=fd.make_forward_verbose(model=ae.decoder, model_name="vae")
 
 ## 模型编译
 if RUN_ON_NEURON:
@@ -111,22 +111,22 @@ if RUN_ON_NEURON:
     ################# 3.1 vit clip compile ##################
 
     ## clip tokenizer
-    VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR = NEURON_COMPILER_WORKDIR / "CLIP_TOKENIZER"
-    VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR.mkdir(exist_ok=True)
-    example_clip_model_input = torch.randn((BATCH_SIZE*NUM_IMAGES_PER_PROMPT, VAE_OUT_CHANNELS, HEIGHT, WIDTH), dtype=DTYPE)
-    with torch.no_grad():
-       clip_model_neuron = torch_neuronx.trace(
-           clip_neuron,
-           example_clip_model_input,
-               compiler_workdir=VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR,
-               compiler_args=[*NEURON_COMPILER_CLI_ARGS, f'--logfile={VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR}/log-neuron-cc.txt'],
-               )
+    #VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR = NEURON_COMPILER_WORKDIR / "CLIP_TOKENIZER"
+    #VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR.mkdir(exist_ok=True)
+    #example_clip_model_input = torch.randn((BATCH_SIZE*NUM_IMAGES_PER_PROMPT, VAE_OUT_CHANNELS, HEIGHT, WIDTH), dtype=DTYPE)
+    #with torch.no_grad():
+    #   clip_model_neuron = torch_neuronx.trace(
+    #       clip_neuron,
+    #       example_clip_model_input,
+    #           compiler_workdir=VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR,
+    #           compiler_args=[*NEURON_COMPILER_CLI_ARGS, f'--logfile={VIT_CLIP_CLIP_TOKENIZER_COMPILATION_DIR}/log-neuron-cc.txt'],
+    #           )
 
-    neuron_model=clip_model_neuron
-    file_name ="clip_neuron_tokenizer_model.pt":
-        torch_neuronx.async_load(neuron_model)
-        torch_neuronx.lazy_load(neuron_model)
-        torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
+    #neuron_model=clip_model_neuron
+    #file_name ="clip_neuron_tokenizer_model.pt"
+    #torch_neuronx.async_load(neuron_model)
+    #torch_neuronx.lazy_load(neuron_model)
+    #torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
 
 
     ## clip HF model
@@ -194,13 +194,7 @@ if RUN_ON_NEURON:
       AE_COMPILATION_DIR = NEURON_COMPILER_WORKDIR / "AE"
       AE_COMPILATION_DIR.mkdir(exist_ok=True)
 
-      # temp for debug
-      VISION_MODEL_HIDDEN_DIM = 1280
-      VAE_OUT_CHANNELS = 3
-      HEIGHT = 224
-      WIDTH = 224
-
-      example_ae_model_input = torch.randn((BATCH_SIZE*NUM_IMAGES_PER_PROMPT, VAE_OUT_CHANNELS, HEIGHT, WIDTH), dtype=DTYPE)
+      example_ae_model_input = torch.randn((1, 16, 90, 80), dtype=DTYPE)
       with torch.no_grad():
           ae_model_neuron = torch_neuronx.trace(
             ae_neuron,

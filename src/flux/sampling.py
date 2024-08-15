@@ -10,9 +10,7 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration
 import sys
 from flux.neuron.t5_compile import T5Wrapper
 
-num_beams = 1
-num_return_sequences = 1
-max_length = 128
+
 tokenizer = T5Tokenizer.from_pretrained("google/t5-v1_1-xxl", model_max_length=max_length)
 
 def get_noise(
@@ -35,6 +33,10 @@ def get_noise(
     )
 
 def prepare_by_neuron(t5: T5Wrapper, clip: HFEmbedder, img: Tensor, prompt: str | list[str]) -> dict[str, Tensor]:
+    num_beams = 1
+    num_return_sequences = 1
+    max_length = 128
+
     bs, c, h, w = img.shape
     if bs == 1 and not isinstance(prompt, str):
         bs = len(prompt)
