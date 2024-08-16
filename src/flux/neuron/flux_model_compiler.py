@@ -79,13 +79,13 @@ else:
 # init all components
 clip = load_clip(torch_device)
 #clip_tokenizer_neuron=fd.make_forward_verbose(model=clip.tokenizer, model_name="openai clip vit tokenizer")
-clip_hf_module_neuron=fd.make_forward_verbose(model=clip.hf_module, model_name="openai clip vit hf_module")
+clip_hf_module_neuron=model=clip.hf_module
 
 model = load_flow_model(name, device="cpu" if offload else torch_device)
-model_neuron=fd.make_forward_verbose(model=model, model_name="flux model")
+model_neuron=model
 
 ae = load_ae(name, device="cpu" if offload else torch_device)
-ae_neuron=fd.make_forward_verbose(model=ae.decoder, model_name="vae")
+ae_neuron=ae.decoder
 
 ## 模型编译
 if RUN_ON_NEURON:
