@@ -762,6 +762,11 @@ def main():
     NEURON_COMPILER_OUTPUT_DIR = Path("compiled_models")
     NEURON_COMPILER_OUTPUT_DIR.mkdir(exist_ok=True)
 
+    model_name="google/flan-t5-xl"
+    num_beams = 1
+    num_return_sequences = 1
+    max_length = 128
+
     tokenizer = T5Tokenizer.from_pretrained(model_name, model_max_length=max_length)
     model = T5ForConditionalGeneration.from_pretrained(model_name)
 

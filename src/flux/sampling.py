@@ -11,7 +11,7 @@ import sys
 from flux.neuron.t5_compile import T5Wrapper
 
 
-tokenizer = T5Tokenizer.from_pretrained("google/t5-v1_1-xxl", model_max_length=max_length)
+tokenizer = T5Tokenizer.from_pretrained("google/t5-v1_1-xxl", model_max_length=128)
 
 def get_noise(
     num_samples: int,
@@ -52,7 +52,7 @@ def prepare_by_neuron(t5: T5Wrapper, clip: HFEmbedder, img: Tensor, prompt: str 
 
     if isinstance(prompt, str):
         prompt = [prompt]
-    global tokenizer,max_length,num_beams,num_return_sequences
+    global tokenizer
     txt = t5.generate(tokenizer=tokenizer,prompt=prompt,max_length=max_length,num_beams=num_beams,num_return_sequences=num_return_sequences,device="xla")
 
 

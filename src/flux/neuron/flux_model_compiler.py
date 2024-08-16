@@ -35,21 +35,20 @@ class SamplingOptions:
     seed: int | None
 
 
-name: str = "flux-schnell",
-width: int = 1360,
-height: int = 768,
-seed: int | None = None,
-prompt: str = (
-        "a photo of a forest with mist swirling around the tree trunks. The word "
-        '"FLUX" is painted over it in big, red brush strokes with visible texture'
-),
-device: str = "cuda" if torch.cuda.is_available() else "cpu",
-num_steps: int | None = None,
-loop: bool = False,
-guidance: float = 3.5,
-offload: bool = False,
-output_dir: str = "output",
-add_sampling_metadata: bool = True
+name = "flux-schnell"
+width = 1360
+height = 768
+seed = None
+prompt = """a photo of a forest with mist swirling around the tree trunks. The word
+        'FLUX' is painted over it in big, red brush strokes with visible texture
+        """
+device = "cuda" if torch.cuda.is_available() else "cpu"
+num_steps = None
+loop = False
+guidance = 3.5
+offload = False
+output_dir = "output"
+add_sampling_metadata = True
 
 
 nsfw_classifier = pipeline("image-classification", model="Falconsai/nsfw_image_detection")
@@ -134,15 +133,15 @@ if RUN_ON_NEURON:
     VIT_CLIP_HF_COMPILATION_DIR.mkdir(exist_ok=True)
     # 构建与 kwargs 格式一致的 example input
     example_input_ids = torch.randint(0, 50000, (1, 77), dtype=torch.long)  # 与 kwarg0 格式一致
-    example_attention_mask = None  # 与原始 kwarg1 保持一致，使用 None
+    example_attention_mask = torch.randint(0, 2, (1,))# 与原始 kwarg1 保持一致 None
     example_output_hidden_states = torch.tensor([False], dtype=torch.bool)
 
     # 将这些组合成一个元组作为 example input
-    example_inputs = (example_input_ids, example_attention_mask, example_output_hidden_states)
+    example_clip_model_input = (example_input_ids, example_attention_mask, example_output_hidden_states)
 
     with torch.no_grad():
         clip_model_neuron = torch_neuronx.trace(
-               clip_neuron,
+               clip_hf_module_neuron,
                example_clip_model_input,
                    compiler_workdir=VIT_CLIP_HF_COMPILATION_DIR,
                    compiler_args=[*NEURON_COMPILER_CLI_ARGS, f'--logfile={VIT_CLIP_HF_COMPILATION_DIR}/log-neuron-cc.txt'],
@@ -181,33 +180,33 @@ if RUN_ON_NEURON:
             compiler_args=[*NEURON_COMPILER_CLI_ARGS, f'--logfile={FLUX_COMPILATION_DIR}/log-neuron-cc.txt'],
             )
 
-      neuron_model=flux_model_neuron
-      file_name ="flux_neuron_model.pt"
-      torch_neuronx.async_load(neuron_model)
-      torch_neuronx.lazy_load(neuron_model)
-      torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
-        # Free up memory
-      print(neuron_model.code)
-      del neuron_model, example_flux_model_input
+       neuron_model=flux_model_neuron
+       file_name ="flux_neuron_model.pt"
+       torch_neuronx.async_load(neuron_model)
+       torch_neuronx.lazy_load(neuron_model)
+       torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
+         # Free up memory
+    print(neuron_model.code)
+    del neuron_model, example_flux_model_input
 
 ################# 3.3 ae model compile ##################
-      AE_COMPILATION_DIR = NEURON_COMPILER_WORKDIR / "AE"
-      AE_COMPILATION_DIR.mkdir(exist_ok=True)
+    AE_COMPILATION_DIR = NEURON_COMPILER_WORKDIR / "AE"
+    AE_COMPILATION_DIR.mkdir(exist_ok=True)
 
-      example_ae_model_input = torch.randn((1, 16, 90, 80), dtype=DTYPE)
-      with torch.no_grad():
-          ae_model_neuron = torch_neuronx.trace(
-            ae_neuron,
-            example_ae_model_input,
-            compiler_workdir=AE_COMPILATION_DIR,
-            compiler_args=[*NEURON_COMPILER_CLI_ARGS, f'--logfile={AE_COMPILATION_DIR}/log-neuron-cc.txt'],
-            )
+    example_ae_model_input = torch.randn((1, 16, 90, 80), dtype=DTYPE)
+    with torch.no_grad():
+        ae_model_neuron = torch_neuronx.trace(
+          ae_neuron,
+          example_ae_model_input,
+          compiler_workdir=AE_COMPILATION_DIR,
+          compiler_args=[*NEURON_COMPILER_CLI_ARGS, f'--logfile={AE_COMPILATION_DIR}/log-neuron-cc.txt'],
+          )
 
-          neuron_model=ae_model_neuron
-          file_name ="ae_neuron_model.pt"
-          torch_neuronx.async_load(neuron_model)
-          torch_neuronx.lazy_load(neuron_model)
-          torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
-          # Free up memory
-          print(neuron_model.code)
-          del neuron_model, example_flux_model_input
+        neuron_model=ae_model_neuron
+        file_name ="ae_neuron_model.pt"
+        torch_neuronx.async_load(neuron_model)
+        torch_neuronx.lazy_load(neuron_model)
+        torch.jit.save(neuron_model, NEURON_COMPILER_OUTPUT_DIR / file_name)
+        # Free up memory
+        print(neuron_model.code)
+        del neuron_model, example_flux_model_input
